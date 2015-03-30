@@ -8,46 +8,46 @@
   shell: sysctl -p
 #- name: configure yum
 #  copy: src=CentOS-Base.repo dest=/etc/yum.repos.d/
-- name: configure yum
-  yum: name=http://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm state=present
+#- name: configure yum
+#  yum: name=http://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm state=present
   #yum: name=epel-release state=present
 - name: install ntp service
-#  apt: name=ntp state=present
-  yum: name=ntp state=present
+  apt: name=ntp state=present
+#  yum: name=ntp state=present
 - name: start ntp service
-#  service: name=ntp state=started
-  service: name=ntpd state=started
-#- name: prepare apt
-#  command: apt-get install apt-transport-https
-#- name: add docker.com keys
-#  apt_key: id=A88D21E9 keyserver=hkp://keyserver.ubuntu.com:80 state=present
-#- name: add docker.com repository
-#  apt_repository: repo='deb https://get.docker.com/ubuntu docker main' state=present
+  service: name=ntp state=started
+#  service: name=ntpd state=started
+- name: prepare apt
+  command: apt-get install apt-transport-https
+- name: add docker.com keys
+  apt_key: id=A88D21E9 keyserver=hkp://keyserver.ubuntu.com:80 state=present
+- name: add docker.com repository
+  apt_repository: repo='deb https://get.docker.com/ubuntu docker main' state=present
 - name: install docker
+  apt: name=lxc-docker state=present
+#  yum: name=docker state=absent
+#- name: install docker
 #  apt: name=lxc-docker state=present
-  yum: name=docker state=absent
-- name: install docker
-#  apt: name=lxc-docker state=present
-  yum: name=docker-io state=present
+#  yum: name=docker-io state=present
 - name: start docker service
   service: name=docker state=started
-#- name: install python-apt
-#  apt: name=python-apt
+- name: install python-apt
+  apt: name=python-apt
 - name: install python-pip
-#  apt: name=python-pip state=present
-  yum: name=python-pip state=present
+  apt: name=python-pip state=present
+#  yum: name=python-pip state=present
 - name: get curl
-#  apt: name=curl state=present
-  yum: name=curl state=present
+  apt: name=curl state=present
+#  yum: name=curl state=present
 - name: install docker-py
 #- name: install docker-py
-#  pip: name=docker-py==0.7.2
-  yum: name=python-docker-py
+  pip: name=docker-py==0.6.0
+#  yum: name=python-docker-py
 - name: add the invoker of the benchmark to group docker
   shell: gpasswd --add $SUDO_USER docker
 - name: install sysstat
-#  apt: name=sysstat state=present
-  yum: name=sysstat state=present
+  apt: name=sysstat state=present
+#  yum: name=sysstat state=present
 #- name: copy sysstat-taransible.service
 #  copy: src=sysstat-taransible.service dest=/etc/systemd/system/
 #- name: reload systemd
