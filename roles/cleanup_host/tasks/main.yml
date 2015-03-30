@@ -1,0 +1,23 @@
+---
+- name: remove old ./containers file
+  local_action:
+      module: shell rm -f ./containers
+- name: rotate syststat
+  shell: mv /var/log/sa/taransible /var/log/sa/taransible.$(date -u +"%Y%m%d%H%M%S")
+  ignore_errors: yes
+- name: restart sysstat
+  shell: killall sadc; nohup /usr/lib64/sa/sadc -S ALL 10 /var/log/sa/taransible &
+#  service: name=sysstat-taransible state=restarted
+#- name: kill tarantool containers
+#  docker: image=taransible/tarantool state=absent
+#- name: kill client containers
+#  docker: image=taransible/client state=absent
+- name: kill all containers
+  shell: docker ps -a -q|xargs --no-run-if-empty docker kill
+- name: remove all containers
+  shell: docker ps -a -q|xargs --no-run-if-empty docker rm
+- name: remove old images
+  shell: docker images -q --filter "dangling=true"|xargs --no-run-if-empty docker rmi
+- name: restart docker
+  service: name=docker state=restarted
+#

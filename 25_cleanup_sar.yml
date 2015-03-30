@@ -1,0 +1,7 @@
+- hosts: hosts
+  sudo: yes
+  tasks:
+   - name: remove old statistics
+     shell: rm -f /var/log/sa/taransible
+   - name: start sysstat-taransible service
+     service: name=sysstat-taransible state=restarted

@@ -1,0 +1,26 @@
+[tarantool_containers]
+{% set tarantool_containers = [] %}
+{% for host in groups['hosts'] -%}
+{% if hostvars[host].tarantool_containers.results is defined -%} 
+{% for container in hostvars[host].tarantool_containers.results -%}
+{{ container.ansible_facts.docker_containers[0].Name[1:] }} zone={{ host }} ansible_ssh_host={{ container.ansible_facts.docker_containers[0].NetworkSettings.IPAddress }} ansible_ssh_port={{ ssh_port_to_expose }} ansible_ssh_user=root tarantool_port={{ tarantool_port_to_expose }} http_port={{ http_port_to_expose }} redundancy={{ redundancy }} arena={{ arena }}
+{% if tarantool_containers.append(container.ansible_facts.docker_containers[0].Name[1:] + ' ansible_ssh_host=' + container.ansible_facts.docker_containers[0].NetworkSettings.IPAddress + ' ansible_ssh_port={{ ssh_port_to_expose }} ansible_ssh_user=root' ) %}{% endif %}
+{% endfor -%}
+{% endif -%}
+{% endfor %}
+
+[client_containers]
+{% set counter = 0 -%}
+{% for host in groups['hosts'] -%}
+{% if hostvars[host].client_containers.results is defined -%} 
+{% for container in hostvars[host].client_containers.results -%}
+{{ container.ansible_facts.docker_containers[0].Name[1:] }} ansible_ssh_host={{ container.ansible_facts.docker_containers[0].NetworkSettings.IPAddress }} ansible_ssh_port={{ ssh_port_to_expose }} ansible_ssh_user=root client_id={{ counter + loop.index0 }} batch={{ batch }}
+{% endfor -%}
+{% set counter = counter + hostvars[host].client_containers.results |length -%}
+{% endif -%}
+{% endfor %}
+
+[failed_containers]
+{% if hardware_failure %}
+{{ tarantool_containers|random }}
+{% endif %}

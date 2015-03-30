@@ -1,0 +1,9 @@
+---
+- hosts: failed_containers
+  gather_facts: no
+  roles:
+   - hardware_failure
+- hosts: client_containers
+  gather_facts: no
+  roles:
+   - client

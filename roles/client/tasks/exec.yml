@@ -1,0 +1,7 @@
+---
+- name: exec
+  shell: /root/client/bench.sh trans
+  ignore_errors: true
+- name: fetch logs
+  action: fetch src=/root/client/client-{{ client_id }}.log dest={{ lookup('pipe', 'pwd') }}/results/client-{{ client_id }}-exec.log flat=yes fail_on_missing=no
+  ignore_errors: True

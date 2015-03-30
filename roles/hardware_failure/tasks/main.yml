@@ -1,0 +1,3 @@
+---
+- name: setup hardware failure bomb
+  shell: start-stop-daemon --start -b -p /root/bomb.pid -m --exec /bin/sh -- -c 'sleep 4200; kill 1' # kill 1 is good enough for container

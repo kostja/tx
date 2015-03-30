@@ -1,0 +1,6 @@
+---
+- name: create inventory
+  local_action:
+            module: template
+            src: inventory
+            dest: ./containers

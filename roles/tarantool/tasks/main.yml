@@ -1,0 +1,15 @@
+---
+- name: copy Tarantool configuration file
+  template: src=master.lua dest=/etc/tarantool/instances.enabled/master.lua owner=root group=root
+- name: copy application  
+  copy: src=bank.lua dest=/usr/share/tarantool/ 
+- name: copy application  
+  copy: src=remote.lua dest=/usr/share/tarantool/ 
+- name: stop Tarantool if any
+  command: tarantoolctl stop master
+- name: clean data
+  command: rm -rf /var/lib/tarantool/master
+- name: clean log files
+  command: rm -rf /var/log/tarantool/master.log
+- name: start Tarantool
+  command: tarantoolctl start master

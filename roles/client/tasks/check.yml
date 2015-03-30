@@ -1,0 +1,4 @@
+---
+- name: check
+  local_action: shell cd {{ lookup('pipe', 'pwd') }} && ./check.py {{ groups['client_containers'] | length }}
+  run_once: true

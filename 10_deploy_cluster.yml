@@ -1,0 +1,5 @@
+---
+- hosts: tarantool_containers
+  gather_facts: no
+  roles:
+   - tarantool

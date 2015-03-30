@@ -1,0 +1,9 @@
+accounts
+accounts-*
+trx
+trx-*
+results/
+accounts*.tsv
+transactions*.tsv
+imdgtest-client-1.0-SNAPSHOT.jar
+imdgtest-client-1.0-SNAPSHOT.jar.0

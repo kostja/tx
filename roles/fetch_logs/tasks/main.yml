@@ -1,0 +1,3 @@
+---
+- name: fetch tarantool logs
+  fetch: src=/var/log/tarantool/master.log dest={{ lookup('pipe', 'pwd') }}/../../client/files/results/{{ inventory_hostname }}.log flat=yes

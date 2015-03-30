@@ -1,0 +1,3 @@
+---
+- name: copy sysstat
+  fetch: src=/var/log/sa/taransible dest={{ lookup('pipe', 'pwd') }}/../../client/files/results/{{ inventory_hostname }}.sar flat=yes

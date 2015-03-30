@@ -1,0 +1,9 @@
+---
+# with_sequence is broken https://groups.google.com/forum/#!msg/ansible-project/swkbKGLio1g/mXzKP3NSP6QJ
+- name: Fix with_sequence
+  shell: seq 1 {{ client_count }}
+  register: client_instances_seq
+- name: start client containers
+  docker: image=taransible/client name="client-{{ prefix }}{{ item }}-{{ inventory_hostname }}" state=running
+  with_items: client_instances_seq.stdout_lines
+  register: client_containers

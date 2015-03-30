@@ -1,0 +1,17 @@
+---
+- file: path=/root/client/ state=directory
+- name: push client application to the node
+  copy: src=imdgtest-client-1.0-SNAPSHOT.jar dest=/root/client/imdgtest-client-1.0-SNAPSHOT.jar
+- name: push log4j.properties
+  copy: src=log4j.properties dest=/root/client/log4j.properties
+- name: push README
+  copy: src=README.md dest=/root/client/README.md
+- name: push accounts.tsv
+  copy: src=accounts/accounts{{ '%03d' | format(client_id) }} dest=/root/client/accounts.tsv
+- name: push transactions.tsv
+  copy: src=trx/trx{{ '%03d' | format(client_id) }}.txt dest=/root/client/transactions.tsv
+- name: push transaction.batch
+  copy: src=trx/trx{{ '%03d' | format(client_id) }}.txt.batch dest=/root/client/transactions.tsv.batch
+  when: batch
+- name: copy script
+  template: src=bench.sh dest=/root/client/bench.sh mode=0755

@@ -1,0 +1,4 @@
+- hosts: tarantool_containers
+  sudo: yes
+  roles:
+   - fetch_logs

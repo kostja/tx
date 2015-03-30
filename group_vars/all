@@ -1,0 +1,5 @@
+---
+ssh_port_to_expose: 22
+tarantool_port_to_expose: 3313
+# Must be > 1024
+http_port_to_expose: 8080

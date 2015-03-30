@@ -1,0 +1,14 @@
+*~
+site/
+*.swp
+*.log
+*.snap
+*.xlog
+hosts
+config.yml
+containers
+out/
+httpfast/
+imdgtest/
+out-*/
+benchmarks.csv

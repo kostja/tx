@@ -1,0 +1,8 @@
+---
+- file: path=/tmp/client_container state=directory
+- template: src=Dockerfile.client dest=/tmp/client_container/Dockerfile
+- fetch: src=/home/{{ ansible_ssh_user }}/.ssh/authorized_keys dest=/tmp/authorized_keys fail_on_missing=yes
+- copy: src=/tmp/authorized_keys/{{ inventory_hostname }}/home/{{ ansible_ssh_user }}/.ssh/authorized_keys dest=/tmp/client_container/authorized_keys
+- name: build client image
+  docker_image: name="taransible/client" path=/tmp/client_container/ state=build
+- command: rm -rf /tmp/client_container/

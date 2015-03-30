@@ -1,0 +1,7 @@
+---
+- name: load
+  shell: /root/client/bench.sh load
+  ignore_errors: True
+- name: fetch logs
+  action: fetch src=/root/client/client-{{ client_id }}.log dest={{ lookup('pipe', 'pwd') }}/results/client-{{ client_id }}-load.log flat=yes fail_on_missing=no
+  ignore_errors: True

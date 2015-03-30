@@ -1,0 +1,28 @@
+---
+- name: cleanup
+  local_action: shell rm -rf {{ lookup('pipe', 'pwd') }}/results
+  run_once: true
+- include: deploy.yml
+- name: create directory
+  local_action: file path={{ lookup('pipe', 'pwd') }}/results state=directory
+  run_once: true
+- name: save start time
+  local_action: shell date +%s > {{ lookup('pipe', 'pwd') }}/results/.timestamp_start
+  run_once: true
+- include: load.yml
+- name: remember load time
+  local_action: shell date +%s > {{ lookup('pipe', 'pwd') }}/results/.timestamp_load
+  run_once: true
+- include: exec.yml
+- name: remember exec time
+  local_action: shell date +%s > {{ lookup('pipe', 'pwd') }}/results/.timestamp_exec
+  run_once: true
+- name: remove accounts.tsv and transactions.tsv
+  shell: rm -f /root/client/*.tsv || echo ""
+- include: save.yml
+- name: remember save time
+  local_action: shell date +%s > {{ lookup('pipe', 'pwd') }}/results/.timestamp_save
+#- include: check.yml
+- name: prepare results
+  local_action: shell cd {{ lookup('pipe', 'pwd') }}/results/ && echo 'Execution time -' $(($(cat .timestamp_exec ) - $(cat .timestamp_load))) > _results.txt
+  run_once: true

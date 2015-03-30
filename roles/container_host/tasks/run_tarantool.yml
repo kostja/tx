@@ -1,0 +1,11 @@
+---
+# with_sequence is broken https://groups.google.com/forum/#!msg/ansible-project/swkbKGLio1g/mXzKP3NSP6QJ
+- name: Fix with_sequence
+  shell: seq 1 {{ server_count }}
+  register: tarantool_instances_seq
+- name: start tarantool containers
+  docker: image=taransible/tarantool name="tarantool-{{ prefix }}{{ item }}-{{ inventory_hostname }}" state=running
+  with_items: tarantool_instances_seq.stdout_lines
+  register: tarantool_containers
+- name: test
+  debug: var=tarantool_containers

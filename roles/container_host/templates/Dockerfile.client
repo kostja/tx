@@ -1,0 +1,15 @@
+FROM ubuntu:14.04.1
+MAINTAINER Roman Tsisyk <roman@tarantool.org>
+
+RUN apt-get update && apt-get install -y openssh-server && sed -i "s/Port 22/Port {{ ssh_port_to_expose }}/g" /etc/ssh/sshd_config && sed -i "s/UsePAM yes/UsePAM no/g" /etc/ssh/sshd_config && echo "UseDNS no" >> /etc/ssh/sshd_config && service ssh restart
+RUN apt-get install -y psutils openjdk-7-jdk lua5.1
+
+RUN mkdir /root/.ssh && chmod 0700 /root/.ssh/ 
+
+CMD ["pwd"]
+
+# Important note! This file is taken from you Ansible manager node (not from the host where Docker runs). You may tell it to copy any keys file you want.
+COPY authorized_keys /root/.ssh/authorized_keys
+
+EXPOSE {{ ssh_port_to_expose }}
+CMD ["/usr/sbin/sshd", "-D"]

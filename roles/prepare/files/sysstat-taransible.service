@@ -1,0 +1,10 @@
+[Unit]
+Description=System statistics for Taransible benchmark
+After=sysstat.service
+
+[Service]
+ExecStart=/usr/lib64/sa/sadc -S ALL 10 /var/log/sa/taransible
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

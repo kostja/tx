@@ -1,0 +1,10 @@
+---
+- name: save
+  shell: /root/client/bench.sh save
+  ignore_errors: True
+- name: fetch results
+  action: fetch src=/root/client/accounts_out.tsv dest={{ lookup('pipe', 'pwd') }}/results/accounts{{ '%03d' | format(client_id) }}.tsv flat=yes fail_on_missing=no
+  ignore_errors: True
+- name: fetch logs
+  action: fetch src=/root/client/client-{{ client_id }}.log dest={{ lookup('pipe', 'pwd') }}/results/client-{{ client_id }}-save.log flat=yes fail_on_missing=no
+  ignore_errors: True

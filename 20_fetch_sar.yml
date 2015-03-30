@@ -1,0 +1,4 @@
+- hosts: hosts
+  sudo: yes
+  roles:
+   - fetch_sar

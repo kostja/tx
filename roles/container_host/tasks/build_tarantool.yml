@@ -1,0 +1,8 @@
+---
+- file: path=/tmp/tarantool_container state=directory
+- template: src=Dockerfile.tarantool dest=/tmp/tarantool_container/Dockerfile
+- fetch: src=/home/{{ ansible_ssh_user }}/.ssh/authorized_keys dest=/tmp/authorized_keys fail_on_missing=yes
+- copy: src=/tmp/authorized_keys/{{ inventory_hostname }}/home/{{ ansible_ssh_user }}/.ssh/authorized_keys dest=/tmp/tarantool_container/authorized_keys
+- name: build Tarantool image
+  docker_image: name="taransible/tarantool" path=/tmp/tarantool_container/ state=build
+- command: rm -rf /tmp/tarantool_container/

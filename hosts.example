@@ -1,0 +1,13 @@
+localhost ansible_connection=local
+
+[hosts]
+192.168.103.170 server_count=0 client_count=24 prefix=bench-10- redundancy=2 batch=1 hardware_failure=0
+192.168.103.169 server_count=0 client_count=24 prefix=bench-10- redundancy=2 batch=1 hardware_failure=0
+192.168.103.168 server_count=1 client_count=0 prefix=bench-10- redundancy=2 batch=1 hardware_failure=0
+192.168.103.167 server_count=1 client_count=0 prefix=bench-10- redundancy=2 batch=1 hardware_failure=0
+192.168.103.166 server_count=1 client_count=0 prefix=bench-10- redundancy=2 batch=1 hardware_failure=0
+192.168.103.165 server_count=1 client_count=0 prefix=bench-10- redundancy=2 batch=1 hardware_failure=0
+192.168.103.164 server_count=1 client_count=0 prefix=bench-10- redundancy=2 batch=1 hardware_failure=0
+192.168.103.163 server_count=1 client_count=0 prefix=bench-10- redundancy=2 batch=1 hardware_failure=0
+192.168.103.162 server_count=1 client_count=0 prefix=bench-10- redundancy=2 batch=1 hardware_failure=0
+192.168.103.161 server_count=1 client_count=0 prefix=bench-10- redundancy=2 batch=1 hardware_failure=0

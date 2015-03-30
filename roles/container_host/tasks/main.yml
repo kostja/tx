@@ -1,0 +1,6 @@
+---
+#- include: build_tarantool.yml
+#- include: build_client.yml
+- include: run_tarantool.yml
+- include: run_client.yml
+- include: inventory.yml
