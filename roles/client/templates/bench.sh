@@ -12,13 +12,13 @@ CMD="${CMD} -server {{ hostvars[host]['ansible_ssh_host'] }}:{{ hostvars[host]['
 
 case "$1" in
 	load)
-		${CMD} load -batch 100000 accounts.tsv
+		${CMD} load -batch 25000 accounts.tsv
                 ;;
 	save)
 		${CMD} save -out accounts_out.tsv
 		;;
 	trans)
-		${CMD} exec-trans -batch 1 transactions.tsv
+		${CMD} exec-trans -batch 1000 transactions.tsv
 		;;
 	*)
 		echo "Usage: $0 load|save|trans"

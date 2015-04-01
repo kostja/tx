@@ -377,7 +377,7 @@ for benchmark in benchmarks:
            os.rename(src_path, dst_path)
         except:
             log.exception("failed to move file %s to %s for client_id=%d",
-                i, src_path, dst_path)
+                src_path, dst_path, i)
 
     os.unlink(trx_dir)
     os.unlink(accounts_dir)

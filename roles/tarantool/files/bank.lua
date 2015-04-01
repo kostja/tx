@@ -10,7 +10,7 @@ local msgpack = require('msgpack')
 
 local servers = {}
 local servers_n
-local trx_workers_n = 4 -- workers_n/2
+local trx_workers_n = 4 -- workers_n/2 
 local redundancy = 3
 
 local REMOTE_TIMEOUT = 500
@@ -224,7 +224,7 @@ local function bulk_load(self)
                 batch.tuples[batch.count] = tuple
             end
         else
-            die('invalid line in bulk_load: [%s]', line)
+            die('invalid line in bulk_load: [%s]', line) 
         end
        i = i + 1
     end
@@ -239,7 +239,7 @@ local function bulk_load(self)
     batches = nil
     collectgarbage('collect')
     return self:render({ text = string.format('loaded %s accounts', i) })
-end
+end 
 
 local SAVE_BATCH_SIZE = 50
 
@@ -260,13 +260,25 @@ local function get_all_iter(paramx, state)
     return statenew, table.concat(result)
 end
 
+-- transactions queued for local execution but not executed yet
+--
+transaction_queue = {}
+--  transactions executed locally, but perhaps not yet
+--  executed globally. transasctions executed globally
+--  are removed forever
+transaction_history = {}
+-- used only during recovery, for parallel recovery
+--
+transaction_inprogress = {}
+
 local function has_outstanding_transactions()
-    local tuple = box.space.transactions.index.queue:min()
-    if tuple == nil or tuple[2] == STATE_HANDLED then
+    for k,v in pairs(transaction_queue) do
         return true
-    else
-        return false
     end
+    for k,v in pairs(transaction_inprogress) do
+        return true
+    end
+    return false
 end
 
 local function get_all(self)
@@ -275,8 +287,11 @@ local function get_all(self)
     local delay = 0.01
     while has_outstanding_transactions() do
         if i % 120 == 0 then
+            count = 0
+            for _ in pairs(transaction_queue) do count = count + 1 end
+            for _ in pairs(transaction_inprogress) do count = count + 1 end
             -- log at least once
-            log.info("waiting for outstanding transactions")
+            log.info("waiting for %d outstanding transactions", count)
         end
         i = i + 1
         delay = math.min(delay * 2, 1)
@@ -287,43 +302,58 @@ local function get_all(self)
 end
 
 function find_transaction(id)
-    return box.space.transactions:get(id) ~= nil
-end
-
-function execute_transaction(id, src, dst, amount)
-    box.begin()
-    box.space.accounts:update(src, {{ '-', 2, amount }})
-    box.space.accounts:update(dst, {{ '+', 2, amount }})
-    box.space.transactions:update(id, {{ '=', 2, STATE_HANDLED }})
-    box.commit()
+    return transaction_queue[id] ~= nil or transaction_history[id] ~= nil
+            or transaction_inprogress[id] ~= nil
 end
 
 -- called from a remote host
 function queue_transaction(tuples, ack_queue, purge_queue)
+    -- <<< some shit there
     for k, v in pairs(ack_queue) do
-        local tuple = box.space.transactions:get(v)
+        local tuple = transaction_queue[v]
         if tuple == nil then
-            log.error("lost a transaction to execute,  %s", v)
-        elseif tuple[2] == STATE_NEW then
+            if transaction_history[v] == nil then
+                log.error("lost a transaction to execute,  %s", v)
+            end
+        else
+            local id, src, dst, amount = tuple[1], tuple[2], tuple[3], tuple[4]
+
+            box.begin()
+            box.space.accounts:update(src, {{ '-', 2, amount }})
+            box.space.accounts:update(dst, {{ '+', 2, amount }})
+            box.commit()
             log.debug('executing transaction, %s', v)
-            execute_transaction(tuple[1], tuple[3], tuple[4], tuple[5])
+            -- preserve this transaction in history until we know
+            -- that all nodes have executed it
+            transaction_history[id] = true 
+            -- we no longer need it in the queue
+            transaction_queue[id] = nil
+        end
+    end
+    for k,v in pairs(purge_queue) do
+        if transaction_history[v] == nil then
+            log.error("double deletion of transaction %s", v)
+        else
+            log.debug("deleting transaction %s", v)
+            transaction_history[v] = nil
         end
     end
     -- queue pushed tuples
     for k, v in pairs(tuples) do
         local id = v[1]
-        if box.space.transactions:get(id) ~= nil then
-            log.error('double queueing %s', id)
+        if transaction_queue[id] ~= nil or transaction_history[id] ~= nil then
+--            log.error('double queueing %s', id)
         else
             log.debug('queueing transaction, %s', id)
-            box.space.transactions:insert(id, STATE_NEW, v[2], v[3], v[4])
+            transaction_queue[id] = v
         end
     end
 end
 
 local function recover_transaction(tuple)
-    local id, src, dst, amount = tuple[1], tuple[3], tuple[4], tuple[5]
-    box.space.transactions:update(id, {{ '=', 2, STATE_INPROGRESS}})
+    local id, src, dst, amount = unpack(tuple)
+    transaction_inprogress[id] = tuple
+    transaction_queue[id] = nil
     local delay = 0.01
     for i=1,100 do
         local failed = nil
@@ -340,17 +370,23 @@ local function recover_transaction(tuple)
             end
         end
         if failed == nil then
-            if box.space.transactions:get(id)[2] == STATE_INPROGRESS then
-                execute_transaction(id, src, dst, amount)
-            end
-            return
+            break
         end
         fiber.sleep(delay)
         delay = math.min(delay * 2, 5)
     end
-    log.error("failed to process transaction=%s failed_host=%s", id, failed)
-    if box.space.transactions:get(id)[2] == STATE_INPROGRESS then
-        box.space.transactions:update(id, {{ '=', 2, STATE_NEW}})
+    -- queue_transaction checks that transaction is in transaction_queue
+    -- put it there
+    transaction_inprogress[id] = nil
+    transaction_queue[id] = tuple
+    if failed == nil then
+        local status, reason = pcall(queue_transaction, {}, { id }, {})
+        if status then
+            transaction_history[id] = true 
+            transaction_inprogress[id] = nil
+        end
+    else
+        log.error("failed to process transaction=%s failed_host=%s", id, failed)
     end
 end
 
@@ -358,9 +394,14 @@ local function trxq_manager_loop()
     fiber.name("trxq/handler")
     local delay = 0.01
     while true do
-        local tuple = box.space.transactions.index.queue:min()
-        if tuple ~= nil and tuple[2] == STATE_NEW then
-            recover_transaction(tuple[1])
+        local tuple
+        for k, v in pairs(transaction_queue) do
+            tuple = v
+            break
+        end
+        if tuple then
+            recover_transaction(tuple)
+            delay = 0.01
         else
             fiber.sleep(delay)
             delay = math.min(delay * 2, 5)
@@ -433,7 +474,7 @@ local function transactions(self)
         end
         local date, id, src, dst, amount = line:match("([0-9%-]+%s+[0-9%-%:%.]+)%s+([%d%-]+)%s+([%d%-]+)%s+([%d%-]+)%s+([%d%.]+)")
         if not date then
-            die('invalid line in /transactions: [%s]', line)
+            die('invalid line in /transactions: [%s]', line) 
         end
         amount = tomoney(amount)
         local shards = shard2(src, dst)
@@ -484,7 +525,7 @@ local function start(cfg)
         transactions:create_index('queue', {type = 'tree', parts = {2, 'num', 1, 'str'}})
         local accounts = box.schema.create_space('accounts')
         accounts:create_index('primary', {type = 'hash', parts = {1, 'str'}})
-        log.info('bootstrapped')
+        log.info('bootstrapped') 
     end
 
     -- Start binary port
@@ -547,7 +588,7 @@ local function start(cfg)
         :route({path = '/transactions', method = 'POST'}, transactions)
 
     if not httpd:start() then
-        die('failed to start http server')
+        die('failed to start http server')    
     end
     log.info('started')
     return true
@@ -558,3 +599,4 @@ return {
 }
 
 -- vim: ts=4:sw=4:sts=4:et
+
