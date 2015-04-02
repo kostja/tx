@@ -2,7 +2,7 @@
 
 cd $(dirname $(readlink -f $0))
 
-ping 10.50.10.254 -c 1
+#ping 10.50.10.254 -c 1
 
 CMD="java -jar ./imdgtest-client-1.0-SNAPSHOT.jar -id {{ client_id }}"
 CMD="${CMD} -switch-server-on-http-error -socketTimeout 5000 -server-retries 2 -http-retries 10"

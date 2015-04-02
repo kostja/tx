@@ -4,7 +4,9 @@
 - name: copy application  
   copy: src=bank.lua dest=/usr/share/tarantool/ 
 - name: copy application  
-  copy: src=remote.lua dest=/usr/share/tarantool/ 
+  copy: src=remote.lua dest=/usr/share/tarantool/
+- name: copy application
+  copy: src=shard.lua dest=/usr/share/tarantool/
 - name: stop Tarantool if any
   command: tarantoolctl stop master
 - name: clean data

@@ -5,7 +5,7 @@ RUN apt-get update && apt-get -y install wget
 RUN wget http://tarantool.org/dist/public.key -O -|apt-key add -
 RUN echo "deb http://tarantool.org/dist/master/ubuntu/ trusty main" > /etc/apt/sources.list.d/tarantool.list 
 RUN apt-get update && apt-get install -y openssh-server && sed -i "s/Port 22/Port {{ ssh_port_to_expose }}/g" /etc/ssh/sshd_config && sed -i "s/UsePAM yes/UsePAM no/g" /etc/ssh/sshd_config && echo "UseDNS no" >> /etc/ssh/sshd_config && service ssh restart
-RUN apt-get install -y psmisc tarantool tarantool-http
+RUN apt-get install -y psmisc tarantool tarantool-http tarantool-shard
 
 RUN mkdir /root/.ssh && chmod 0700 /root/.ssh/ 
 

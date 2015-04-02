@@ -2,18 +2,11 @@
 
 local fiber = require('fiber')
 local log = require('log')
-local remote = require('remote')
 local http_server = require('http.server')
 local fun = require('fun')
-local digest = require('digest')
-local msgpack = require('msgpack')
+local shard = require('shard')
 
-local servers = {}
-local servers_n
 local trx_workers_n = 4 -- workers_n/2 
-local redundancy = 3
-
-local REMOTE_TIMEOUT = 500
 
 local STATE_NEW = 0
 local STATE_INPROGRESS = 1
@@ -25,28 +18,12 @@ local function die(msg, ...)
     error(err)
 end
 
-local function shard(account_id)
-    local num = digest.crc32(account_id)
-    local shards = {}
-    local k = 1
-    for i=1,redundancy do
-        local zone = servers[tonumber(1 + (num + i) % servers_n)]
-        local server = zone[1 + digest.guava(num, #zone)]
-        -- ignore died servers
-        if server.conn:is_connected() then
-            shards[k] = server
-            k = k + 1
-        end
-    end
-    return shards
-end
-
 local function shard2(a, b)
     local shards = {}
-    for _, server in ipairs(shard(a)) do
+    for _, server in ipairs(shard.shard(a)) do
         shards[server] = server
     end
-    for _, server in ipairs(shard(b)) do
+    for _, server in ipairs(shard.shard(b)) do
         shards[server] = server
     end
     return shards
@@ -171,17 +148,11 @@ function load_accounts(tuples)
 end
 
 local function load_batch(args)
+    -- all errors handling is in shard.lua
     local server = args[1]
     local tuples = args[2]
-    local status, reason = pcall(function()
-        server.conn:timeout(5 * REMOTE_TIMEOUT)
-            :call("load_accounts", tuples)
-    end)
-    if not status then
-        log.error('failed to insert on %s: %s', server.uri, reason)
-        if not server.conn:is_connected() then
-            log.error("server %s is offline", server.uri)
-        end
+    for _, tuple in ipairs(tuples) do
+        shard.accounts.single_call(server, 'insert', tuple)
     end
 end
 
@@ -214,7 +185,8 @@ local function bulk_load(self)
         if account_id then
             balance = tomoney(balance1)
             local tuple = box.tuple.new{ account_id, balance, info }
-            for _, server in ipairs(shard(account_id)) do
+            --table.insert(batches, tuple)
+            for _, server in ipairs(shard.shard(account_id)) do
                 local batch = batches[server]
                 if batch == nil then
                     batch = { count = 0, tuples = {} }
@@ -228,11 +200,11 @@ local function bulk_load(self)
         end
        i = i + 1
     end
-
-    local q = queue(load_batch, servers_n)
+    local q = queue(load_batch, shard.len())
     for server, batch in pairs(batches) do
-        q:put({ server, batch.tuples })
+        q:put({server, batch.tuples})
     end
+
     -- stop fiber queue
     q:join()
     log.info('loaded %s accounts', i)
@@ -308,7 +280,6 @@ end
 
 -- called from a remote host
 function queue_transaction(tuples, ack_queue, purge_queue)
-    -- <<< some shit there
     for k, v in pairs(ack_queue) do
         local tuple = transaction_queue[v]
         if tuple == nil then
@@ -361,7 +332,7 @@ local function recover_transaction(tuple)
         for _, server in pairs(shards) do
             -- check that transaction is queued to all hosts
             local status, reason = pcall(function()
-                return server.conn:timeout(REMOTE_TIMEOUT):call("find_transaction", id) ~= nil
+                return server.conn:timeout(shard.REMOTE_TIMEOUT):call("find_transaction", id) ~= nil
             end)
             if not status or not reason then
                 -- wait until transaction will be queued on all hosts
@@ -437,7 +408,7 @@ local function push_transaction(task)
     server.purge_queue = {}
     -- queue transactions
     local status, reason = pcall(function()
-        server.conn:timeout(REMOTE_TIMEOUT):call("queue_transaction",
+        server.conn:timeout(shard.REMOTE_TIMEOUT):call("queue_transaction",
             task.tuples, ack_queue, purge_queue)
     end)
     if not status then
@@ -510,6 +481,17 @@ local function transactions(self)
     return self:render({ text = string.format('processed %d transactions', i) })
 end
 
+-- shard server init additional fields
+local function cb_shard_init(srv)
+    srv.ack_queue = {}
+    srv.purge_queue = {}
+end
+
+-- check shard after connect function
+shard.check_shard = function(conn)
+    return conn.space.accounts ~= nil
+end
+
 --
 -- Entry point
 --
@@ -531,47 +513,8 @@ local function start(cfg)
     -- Start binary port
     box.cfg { listen = cfg.binary }
 
-    log.info('establishing connection to cluster servers...')
-    servers = {}
-    local zones = {}
-    for _, server in pairs(cfg.servers) do
-        local conn
-        log.info(' - %s - connecting...', server.uri)
-        while true do
-            conn = remote:new(cfg.login..':'..cfg.password..'@'..server.uri,
-		{ reconnect_after = msgpack.NULL })
-            conn:ping()
-            if conn.space.accounts then
-                local zone = zones[server.zone]
-                if not zone then
-                    zone = {}
-                    zones[server.zone] = zone
-                    table.insert(servers, zone)
-                end
-                if conn:eval('return box.info.server.uuid') == box.info.server.uuid then
-                    -- detected self
-                    log.info(" - self is %s:%s", conn.host, conn.port)
-                    conn:close()
-                    conn = remote.self
-                    -- A workaround for #746
-                    conn.is_connected = function() return true end
-                end
-                local srv = { uri = server.uri, conn = conn}
-                srv.ack_queue = {}
-                srv.purge_queue = {}
-                table.insert(zone, srv)
-                break
-            end
-            conn:close()
-            log.warn(" - %s doesn't have accounts table", server.uri)
-            fiber.sleep(1)
-        end
-        log.info(' - %s - connected', server.uri)
-    end
-    log.info('connected to all servers')
-    redundancy = cfg.redundancy or #servers
-    servers_n = #servers
-    log.info("redundancy = %d", redundancy)
+    -- Initialize shard
+    shard.init(cfg, cb_shard_init)
 
     -- Change state of all INPROGRESS tasks to NEW
     for _, tuple in ipairs(box.space.transactions.index.queue:
