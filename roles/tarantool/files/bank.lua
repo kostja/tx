@@ -148,11 +148,17 @@ function load_accounts(tuples)
 end
 
 local function load_batch(args)
-    -- all errors handling is in shard.lua
     local server = args[1]
     local tuples = args[2]
-    for _, tuple in ipairs(tuples) do
-        shard.accounts.single_call(server, 'insert', tuple)
+    local status, reason = pcall(function()
+        server.conn:timeout(5 * shard.REMOTE_TIMEOUT)
+            :call("load_accounts", tuples)
+    end)
+    if not status then
+        log.error('failed to insert on %s: %s', server.uri, reason)
+        if not server.conn:is_connected() then
+            log.error("server %s is offline", server.uri)
+        end
     end
 end
 
