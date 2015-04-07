@@ -12,7 +12,8 @@ local cfg = {
     login = 'tester';
     password = 'pass';
     redundancy = {{ redundancy }};
-    binary = {{ tarantool_port_to_expose }}
+    binary = {{ tarantool_port_to_expose }};
+    my_uri = '{{ ansible_ssh_host }}:{{tarantool_port_to_expose}}'
 }
 
 box.cfg {

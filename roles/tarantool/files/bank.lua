@@ -5,6 +5,7 @@ local log = require('log')
 local http_server = require('http.server')
 local fun = require('fun')
 local shard = require('shard')
+local yaml = require('yaml')
 
 local trx_workers_n = 4 -- workers_n/2 
 
@@ -260,6 +261,13 @@ local function has_outstanding_transactions()
 end
 
 local function get_all(self)
+    -- push self heartbeat table into logs
+    hb_table = shard.get_heartbeat()
+    for s_name, s_table in pairs(hb_table) do
+        log.info(s_name)
+        log.info('%s', yaml.encode(s_table))
+    end
+
     trxq_wakeup()
     local i = 0
     local delay = 0.01
