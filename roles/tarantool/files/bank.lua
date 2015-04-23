@@ -241,9 +241,9 @@ end
 local function has_outstanding_transactions()
     local tuple = box.space.transactions.index.queue:min()
     if tuple == nil or tuple[2] == STATE_HANDLED then
-        return true
-    else
         return false
+    else
+        return true
     end
 end
 
@@ -251,6 +251,10 @@ local function get_all(self)
     trxq_wakeup()
     local i = 0
     local delay = 0.01
+    log.info('BEFORE_WAIT')
+    log.info(yaml.encode(box.space.transactions.index.queue:select(
+        STATE_INPROGRESS, {iterator='le'}
+    )))
     while has_outstanding_transactions() do
         if i % 120 == 0 then
             -- log at least once
@@ -260,6 +264,11 @@ local function get_all(self)
         delay = math.min(delay * 2, 1)
         fiber.sleep(delay)
     end
+    log.info('AFTER WAIT')
+    log.info(yaml.encode(box.space.transactions.index.queue:select(
+        STATE_INPROGRESS, {iterator='le'}
+    )))
+
     local gen, param, state = box.space.accounts:pairs()
         return self:iterate(get_all_iter, {gen, param}, state)
 end
@@ -338,7 +347,7 @@ local function trxq_manager_loop()
     while true do
         local tuple = box.space.transactions.index.queue:min()
         if tuple ~= nil and tuple[2] == STATE_NEW then
-            recover_transaction(tuple[1])
+            recover_transaction(tuple)
         else
             fiber.sleep(delay)
             delay = math.min(delay * 2, 5)
