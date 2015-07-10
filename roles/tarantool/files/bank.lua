@@ -99,7 +99,7 @@ local function bulk_load(self)
     local total = self.headers['content-length']
     local c = 0
     while true do
-        local line = self:read("[\r\n]+")
+        local line = self:read("\n")
         if line == '' then
             break
         elseif line == nil then
@@ -190,7 +190,7 @@ local function transactions(self)
     local tasks_n = 0
     local batch = shard.q_begin()
     while true do
-        local line = self:read("[\r\n]+")
+        local line = self:read("\n")
         if line == '' then
             break
         elseif line == nil then
